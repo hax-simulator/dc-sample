@@ -8,6 +8,6 @@
 </listAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="sk.hax.application.Launcher"/>
 <stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="HaxApplication"/>
-<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dhax.home=${workspace_loc:HaxDistribution}/bin -Djava.security.manager -Djava.security.policy==${workspace_loc:HaxDistribution}/hax-eclipse.policy"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dhax.home=${workspace_loc:HaxDistribution}/bin -Djava.security.manager -Djava.security.policy==${workspace_loc:HaxDistribution}/hax-eclipse.policy -Declipse.home=${eclipse_home} -Dworkspace.loc=${workspace_loc}"/>
 <stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="${workspace_loc:HaxDC-sample}"/>
 </launchConfiguration>
