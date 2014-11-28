@@ -1,13 +1,12 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <launchConfiguration type="org.eclipse.jdt.launching.localJavaApplication">
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_PATHS">
-<listEntry value="/HaxApplication/src/sk/hax/application/Launcher.java"/>
+<listEntry value="/HaxFramework/lib/hax-application.jar"/>
 </listAttribute>
 <listAttribute key="org.eclipse.debug.core.MAPPED_RESOURCE_TYPES">
 <listEntry value="1"/>
 </listAttribute>
 <stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="sk.hax.application.Launcher"/>
-<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="HaxApplication"/>
-<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dhax.home=${workspace_loc:HaxDistribution}/bin -Djava.security.manager -Djava.security.policy==${workspace_loc:HaxDistribution}/hax-eclipse.policy -Declipse.home=${eclipse_home} -Dworkspace.loc=${workspace_loc}"/>
-<stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="${workspace_loc:HaxDC-sample}"/>
+<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="HaxDC-sample"/>
+<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="-Dhax.home=${workspace_loc:HaxFramework} -Djava.security.manager -Djava.security.policy==${workspace_loc:HaxFramework}/bin/hax-eclipse.policy -Declipse.home=${eclipse_home} -Dworkspace.loc=${workspace_loc}"/>
 </launchConfiguration>

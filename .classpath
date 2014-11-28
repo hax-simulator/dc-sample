@@ -2,14 +2,12 @@
 <classpath>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/Hax"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/HaxApplication"/>
 	<classpathentry exported="true" kind="con" path="GROOVY_SUPPORT">
 		<attributes>
 			<attribute name="minimal" value="true"/>
 		</attributes>
 	</classpathentry>
 	<classpathentry exported="true" kind="con" path="GROOVY_DSL_SUPPORT"/>
-	<classpathentry combineaccessrules="false" kind="src" path="/HaxSoftOS"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/HaxFramework"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
