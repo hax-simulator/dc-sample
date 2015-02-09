@@ -1,5 +1,5 @@
 /**
- * Script 7 - INTRODUCE
+ * Class 7 - INTRODUCE
  *
  * This is the Introduction task from level2, rewritten as a class.
  * A reimplementation of the script task was chosen to better demonstrate the difference between the two approaches.
@@ -35,7 +35,7 @@ class Introduce implements Task {
 	def KERNEL
 
 	/*
-	 * We need to define a property for the reference to the terminal we will be writing output to.
+	 * We need to define a property for the reference to the terminal we will be writing output to and receiving input from.
 	 * The property is automatically set by HaxOS, so we do not have to worry about providing a value for it.
 	 */
 	def TERMINAL
@@ -81,6 +81,7 @@ class Introduce implements Task {
 	 * In this case, the terminal input handler is registered, and the initial prompt is displayed to the user.
 	 */
 	void start() {
+		
 		/*
 		 * The method contained in the 'handler' variable (the 'process' method) is subscribed to the terminal to handle incoming input.
 		 */
@@ -108,7 +109,7 @@ class Introduce implements Task {
 
 	/*
 	 * This method is used to process incoming data from the console terminal.
-	 * It is the one that was previously subscribed to the terminal.
+	 * It is the one that was subscribed to the terminal inside the 'start' method.
 	 * Note that this is simply a copy of the 'process' method as implemented in the script.
 	 * One difference is the use of enum values for the task state.
 	 * The possibility to immediately terminate the task using the ESC key was also added.

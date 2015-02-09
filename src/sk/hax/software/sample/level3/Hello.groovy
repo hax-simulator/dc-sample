@@ -16,7 +16,6 @@ package sk.hax.software.sample.level3
  * Imported classes used throughout the task implementation.
  * These allow you to use only the names of the classes instead of the fully qualified names.
  * E.g., if there is 'import sk.hax.system.Task', it is sufficient to refer to this class as 'Task'.
- *
  */
 import sk.hax.system.Task
 

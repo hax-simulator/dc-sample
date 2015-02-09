@@ -115,7 +115,7 @@ void process(byte[] data) {
 				username = input
 
 				/*
-				 * Transfer the task to state 1 (age), to allow the user to enter his age.
+				 * Transfer the task to state 1 (password), to allow the user to enter his password.
 				 */
 				state = 1
 
