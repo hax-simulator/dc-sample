@@ -150,14 +150,14 @@ void process(byte[] data) {
 				 * The result is the MD5 hash of the username, stored in the 'usernameHash' variable.
 				 * Note that the call to 'digest.digest()' resets the digest so it is ready to calculate another hash.
 				 */
-				String usernameHash = new BigInteger(1, digest.digest()).toString(16)
+				String usernameHash = digest.digest().encodeHex()
 
 				/*
 				 * Now we do the same as above for the password.
 				 * The result is the MD5 hash of the password stored in the 'passwordHash' variable.
 				 */
 				digest.update(input.bytes)
-				String passwordHash = new BigInteger(1, digest.digest()).toString(16)
+				String passwordHash = digest.digest().encodeHex()
 
 				/*
 				 * Next, we check whether the hashes are correct.

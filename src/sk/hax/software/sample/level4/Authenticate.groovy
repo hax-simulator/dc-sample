@@ -32,8 +32,8 @@ import sk.hax.system.Task
 /*
  * The task class is called 'Authenticate' (fully qualified name is 'sk.hax.software.sample.level4.Authenticate').
  * As usual, the task implements the 'sk.hax.system.Task' interface (note the use of the short name 'Task' thanks to the import we have above).
- * The task contains the mandatory 'start' and 'stop' methods, as well as the 'process' and 'prompt' helper methods just like in the original level2 script.
- * The 'process' method is the core of the task, it is the one that contains the file system interaction this task demonstrates.
+ * The task contains the mandatory start() and stop() methods, as well as the process() and prompt() helper methods just like in the original level2 script.
+ * The process() method is the core of the task, it is the one that contains the file system interaction this task demonstrates.
  */
 class Authenticate implements Task {
 
@@ -55,7 +55,7 @@ class Authenticate implements Task {
 	boolean RESIDENT = true
 
 	/*
-	 * The variable 'handler' of an unspecified type will contain a reference to the 'process' method (see below), used to process incoming data from the terminal.
+	 * The variable 'handler' of an unspecified type will contain a reference to the process() method (see below), used to process incoming data from the terminal.
 	 * This is exactly the same notation as in the original level2 script.
 	 */
 	def handler = this.&process
@@ -84,20 +84,20 @@ class Authenticate implements Task {
 	String username
 
 	/*
-	 * The start method is an equivalent of the main routine of a script.
+	 * The start() method is an equivalent of the main routine of a script.
 	 * It is called once upon startup of the task, and used for initialization of the task instance.
 	 * In this case, the terminal input handler is registered, and the initial prompt is displayed to the user.
 	 */
 	void start() {
 
 		/*
-		 * The method contained in the 'handler' variable (the 'process' method) is subscribed to the terminal to handle incoming input.
+		 * The method contained in the 'handler' variable (the process() method) is subscribed to the terminal to handle incoming input.
 		 */
 		TERMINAL.subscribe(handler)
 
 		/*
 		 * We print a simple welcome message, or banner.
-		 * This is only displayed upon starting the task, therefore it is not part of the 'prompt' method.
+		 * This is only displayed upon starting the task, therefore it is not part of the prompt() method.
 		 */
 		TERMINAL.writeln "Sample Authentication Server v2.0 (c) 2015 SampleSoft Inc."
 
@@ -109,21 +109,21 @@ class Authenticate implements Task {
 	}
 
 	/*
-	 * The stop method is an equivalent of the 'stop' method of a script.
+	 * The stop() method is an equivalent of the stop() method of a script.
 	 * It is called before the task is terminated, and used for cleanup and freeing of resources occupied by the task instance.
 	 * In our case, we have made a subscription to the terminal, which we need to remove.
 	 */
 	void stop() {
 
 		/*
-		 * The method contained in the 'handler' variable (the 'process' method) is unsubscribed from listening on the terminal for input.
+		 * The method contained in the 'handler' variable (the process() method) is unsubscribed from listening on the terminal for input.
 		 */
 		TERMINAL.unsubscribe(handler)
 	}
 
 	/*
 	 * This method is used to process incoming data from the console terminal.
-	 * It is the one that was subscribed to the terminal inside the 'start' method.
+	 * It is the one that was subscribed to the terminal inside the start() method.
 	 */
 	void process(byte[] data) {
 
@@ -191,9 +191,10 @@ class Authenticate implements Task {
 					 * The second line calls the digest() method of the digest object, which performs the MD5 hash calculation.
 					 * Since the result of the digest() method is again a byte array, we need to convert the result to the standard representation of MD5 hashes.
 					 * The standard representation (also used in the users file) is the string representation of the 16 bytes of the hash in hexadecimal format.
+					 * The Groovy method encodeHex() on a byte array achieves exactly the desired output.
 					 */
 					digest.update(input.bytes)
-					String passwordHash = new BigInteger(1, digest.digest()).toString(16)
+					String passwordHash = digest.digest().encodeHex()
 
 					/*
 					 * Now here comes the interesting part.
@@ -216,7 +217,7 @@ class Authenticate implements Task {
 					}
 
 					/*
-					 * We now try to parse the file contents.
+					 * We now parse the file contents.
 					 * Each user in the file is located on a separate line.
 					 * Thus, we split the contents per line into a string array.
 					 * Every item of the string array 'usersLines' will contain a single line of the users file.
@@ -226,12 +227,12 @@ class Authenticate implements Task {
 					String[] usersLines = users.split("\\r?\\n")
 
 					/*
-					 * Next we search the 'usersLines' array for the one corresponding to the earlier supplied username.
+					 * Next we search the 'usersLines' array for the string item corresponding to the earlier supplied username.
 					 * Remember, the format of the lines is 'username:realname:md5_password'. Thus, we need to search for an item which starts with the supplied username.
 					 * Luckily, using Groovy methods and closures, this is a rather easy task.
 					 * The find() method can be used to search an array or collection for a specific item.
 					 * As a parameter, the find() method accepts an arbitrary expression in the form of a closure (an anonymous function, see the Groovy documentation).
-					 * It executes this closure for each item of the array. The first item for which the closure returns true is returned as the result of find().
+					 * It executes this closure for each item of the array. The first item for which the closure returns 'true' is returned as the result of find().
 					 * The closure has access to an implicit variable called 'it', which always contains the current item that it is being run against.
 					 * So in this case, we check whether the current array item 'it' starts with the supplied username followed by a colon.
 					 * If we find the entry for the user, we store it in the 'usersEntry' variable.
@@ -240,8 +241,9 @@ class Authenticate implements Task {
 
 					/*
 					 * We check whether there is an entry for the specified username.
-					 * If the find() method above does not find any suitable item, it returns null.
+					 * If the find() method above does not find any suitable item, it returns 'null'.
 					 * If this was the case, we show an error message in red color and terminate the task.
+					 * Note that we again use a boolean expression to check the variable for a value of 'null'.
 					 */
 					if (!usersEntry) {
 						TERMINAL.writeln "&r-Invalid username or password [username not found].\nAuthentication failed.&00"
@@ -317,7 +319,7 @@ class Authenticate implements Task {
 
 			/*
 			 * If the task state is USERNAME, the user is prompted for his name.
-			 * Note that the 'write' method of the terminal is used, which does not insert a newline at the end.
+			 * Note that the write() method of the terminal is used, which does not insert a newline at the end.
 			 */
 			case State.USERNAME:
 				TERMINAL.write "username: "
@@ -325,7 +327,7 @@ class Authenticate implements Task {
 
 			/*
 			 * If the task state is PASSWORD, the user is prompted for his password.
-			 * Note that the 'write' method of the terminal is used, which does not insert a newline at the end.
+			 * Note that the write() method of the terminal is used, which does not insert a newline at the end.
 			 */
 			case State.PASSWORD:
 				TERMINAL.write "password: "
