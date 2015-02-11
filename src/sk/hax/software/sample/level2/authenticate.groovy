@@ -50,7 +50,7 @@ TERMINAL.subscribe(handler)
 
 /*
  * We print a simple welcome message, or banner.
- * This is only displayed upon starting the task, therefore it is not part of the 'prompt' method.
+ * This is only displayed upon starting the task, therefore it is not part of the prompt() method (specified below).
  */
 TERMINAL.writeln "Sample Authentication Server v1.0 (c) 2014 SampleSoft Inc."
 

@@ -2,26 +2,28 @@
  * Class 9 - AUTHENTICATE with password in file and account locking
  *
  * This class is used to demonstrate writing to the file system.
- * It is quite similar to the previous Authenticate task when it comes to the authentication itself.
+ * It is quite similar to the level4 Authenticate task when it comes to the authentication itself.
  * However, it only allows for 3 attempts to authenticate a specific user. Each successful login clears the attempt counter.
- * If 3 consecutive authentication attempts are unsuccessful, the user is permanently locked out and cannot login anymore.
+ * If 3 consecutive authentication attempts fail, the user is permanently locked out and cannot login anymore.
  *
  * The users file 'users.txt', located in the same directory as this task, has the same format as the one for the Authenticate task. It also contains the same users and passwords.
  * However, an additional data field is added to represent the login attempt counter for each user.
  * For the user lockout, we will simply append the string ':locked' to the end of the line representing the user in the file.
- * This trick removes the need to modify the authentication algorithm, as in this case, the line will never end with the user's password.
- * Despite this, we will add a check for locked accounts to be able to display a different error message to the user.
+ * Thus, the structure of the users file lines will now be 'username:realname:counter:MD5(password):locked'.
+ * We will also add a check for locked accounts to be able to display a different error message to the user in case he attempts to log in with a locked account.
  *
- * The algorithm is as follows: after typing the username and password, the task loads the users file and checks the username and password just like the Authenticate task.
+ * The algorithm is as follows: after typing the username and password, the task loads the users file and finds the entry for the specified username.
+ * It first checks if the account is not locked, and if it is, the task immediately terminates with an error message.
+ * After that, the task performs user authentication just like the Authenticate task.
  * If authentication fails, the task takes the current value of the login attempt counter and increments it. If the counter reaches the value 3, the account will be locked.
  * Then, the task writes the users file contents with the updated login counter and possibly locked status to the file system.
- * If the counter reached the value 3, the task terminates with an error message, otherwise the password prompt is displayed again.
- * Another check the task performs is that if the login name and password of a locked user is entered, the task immediately terminates with an error message.
+ * Finally, if the counter reached the value 3, the task terminates with an error message, otherwise the password prompt is displayed again for another login attempt.
+ * On the other hand, if the authentication is successful, the login attempt counter is reset to 0 and written to the users file, and the task terminates with an authentication success message.
  *
- * Further, this class demonstrates the use of the HaxOS convenience class InteractiveTask.
- * In the previous examples, you could have noticed that a lot of code kept repeating itself throughout all the tasks implemented as a class.
- * To simplify things a bit, HaxOS includes an abstract class called 'sk.hax.software.os.InteractiveTask', which encapsulates all the common code needed to create an interactive task.
- * This way, the developer can focus on the algorithm itself instead of making sure all the required boilerplate code is in place.
+ * Further, this class demonstrates the use of the HaxOS convenience class 'InteractiveTask'.
+ * In the previous examples, you could have noticed that a lot of code kept repeating itself throughout all the tasks implemented as classes.
+ * To simplify things a bit, HaxOS contains an abstract class called 'sk.hax.software.os.InteractiveTask', which encapsulates all the common code needed to create an interactive task.
+ * By subclassing this abstract class, the developer can focus on the algorithm itself instead of making sure all the required boilerplate code is in place.
  */
 
 /*
@@ -31,7 +33,7 @@ package sk.hax.software.sample.level5
 
 /*
  * Imported classes used throughout the task implementation.
- * We only need to import the InteractiveTask class, as this class already implements the required sk.hax.system.Task class.
+ * We only need to import the 'InteractiveTask' class, as this class already implements the required 'sk.hax.system.Task' interface.
  */
 import sk.hax.software.os.InteractiveTask
 
@@ -39,10 +41,10 @@ import sk.hax.software.os.InteractiveTask
 /*
  * The task class is called 'AuthLock' (fully qualified name is 'sk.hax.software.sample.level5.AuthLock').
  * Note that the task extends the 'sk.hax.software.os.InteractiveTask' abstract class (note the use of the short name 'InteractiveTask' thanks to the import we have above).
- * The 'InteractiveTask' already contains implementations of all the methods of the 'sk.hax.system.Task' interface.
+ * The 'InteractiveTask' class already contains implementations of all the methods of the 'sk.hax.system.Task' interface.
  * The only required thing is to implement the handle() method, which handles all received user input.
  * Also note that the KERNEL and TERMINAL properties are already defined in the 'InteractiveTask' class, so we do not need to redeclare them and can simply access them.
- * Here, we also override and extend the start() method to display the initial message and prompt to the user.
+ * For this particular task, we also override and extend the start() method to display the initial message and prompt to the user.
  */
 class AuthLock extends InteractiveTask {
 
@@ -72,20 +74,19 @@ class AuthLock extends InteractiveTask {
 	/*
 	 * We override the start() method to display the initial prompt to the user.
 	 */
-	@Override
 	void start() {
 
 		/*
 		 * We first call the superclass' start() method, so that all necessary initialization takes place.
 		 * Technically, the start() method of the 'InteractiveTask' class performs the subscription to the terminal we previously needed to implement by hand.
 		 * Also note that in turn, the stop() method of the 'InteractiveTask' class removes this subscription.
-		 * Since we need no additional functionality inside the stop() method, we don't have to override it and completely omit it from our AuthLock class.
+		 * Since we need no additional functionality inside the stop() method, we don't have to override it and completely omit it from our 'AuthLock' class.
 		 */
 		super.start()
 
 		/*
 		 * We print a simple welcome message, or banner.
-		 * This is only displayed upon starting the task, therefore it is not part of the 'prompt' method.
+		 * This is only displayed upon starting the task, therefore it is not part of the prompt() method (specified below).
 		 */
 		TERMINAL.writeln "Sample Authentication Server v3.0 (c) 2015 SampleSoft Inc."
 
@@ -101,7 +102,6 @@ class AuthLock extends InteractiveTask {
 	 * The method is declared as abstract in the 'InteractiveTask' class, so every subclass must provide an implementation.
 	 * Technically, this is the method that the 'InteractiveTask' class subscribes to the terminal in its start() method.
 	 */
-	@Override
 	void handle(byte[] data) {
 
 		/*
@@ -154,8 +154,7 @@ class AuthLock extends InteractiveTask {
 
 			/*
 			 * This is the routine executed in case the current task state is PASSWORD.
-			 * This is where the username/password combination is validated to be correct.
-			 * Based on the result of the validation, an adequate message is displayed to the user or operation is performed.
+			 * This is where the username/password combination is validated to be correct, and actions are taken based on the result of this validation.
 			 */
 			case State.PASSWORD:
 
@@ -185,7 +184,7 @@ class AuthLock extends InteractiveTask {
 
 				/*
 				 * We split the users file contents into separate lines.
-				 * The lines of the users file are contained in the 'usersLines' string array.
+				 * The lines of the users file will be contained in the 'usersLines' string array variable.
 				 */
 				String[] usersLines = users.split("\\r?\\n")
 
@@ -210,7 +209,7 @@ class AuthLock extends InteractiveTask {
 
 				/*
 				 * We check whether the user is locked.
-				 * A locked user has is line in the users file terminated by the string ':locked'.
+				 * A locked user has his line in the users file terminated by the string ':locked'.
 				 * If we find that the user is locked, we show an error message in red color and terminate the task.
 				 */
 				if (usersLines[index].endsWith(":locked")) {
@@ -229,15 +228,15 @@ class AuthLock extends InteractiveTask {
 				/*
 				 * Now we need to get the value of the login attempt counter to be able to update it.
 				 * If the login attempt was successful, we need to reset the counter to 0.
-				 * If the login attempt failed, we need to increment the counter and lock the account as required.
-				 * The easiest way to obtain the counter value is to split the user entry by the colon character.
-				 * The resulting string array 'userEntry' contains the counter value on position 2 (0 is the username, 1 is the real name, 2 is the login attempt counter, 3 is the password, 4 is optionally the locked flag).
+				 * If the login attempt failed, we need to increment the counter and lock the account if required.
+				 * The easiest way to obtain the counter value is to split the user entry into a string array by the colon character separator.
+				 * The resulting string array variable 'userEntry' contains the counter value on position 2 (0 is the username, 1 is the real name, 2 is the login attempt counter, 3 is the password, 4 is optionally the locked flag).
 				 */
 				String[] userEntry = usersLines[index].split(":")
 
 				/*
 				 * At this point, we should be checking whether the 'userEntry' variable contains a correct value.
-				 * We will not do it in this place, relying on the correctness of the data.
+				 * We will not do it here, instead relying on the correctness of the data.
 				 * Note that manual editing of the users file may corrupt the data, and result in unpredictable behavior of this task.
 				 *
 				 */
@@ -267,7 +266,7 @@ class AuthLock extends InteractiveTask {
 					 * We use the kernel API function writeFile() for this, providing the absolute path and the file contents as its parameters.
 					 * Note that we first need to convert the 'usersLines' string array to a single string, with each item separated by a newline character.
 					 * To achieve this, we use the join() method we already used earlier, with the separator set to the newline character.
-					 * The sk.hax.Utils class contains the constant 'NEWLINE' that we can use as the separator when calling the join() method.
+					 * The 'sk.hax.Utils' class contains the NEWLINE constant, which can be used as the separator when calling the join() method.
 					 */
 					KERNEL.writeFile("/sample/level5/users.txt", usersLines.join(sk.hax.Utils.NEWLINE))
 
@@ -328,7 +327,7 @@ class AuthLock extends InteractiveTask {
 					 * We use the kernel API function writeFile() for this, providing the absolute path and the file contents as its parameters.
 					 * Note that we first need to convert the 'usersLines' string array to a single string, with each item separated by a newline character.
 					 * To achieve this, we use the join() method we already used earlier, with the separator set to the newline character.
-					 * The sk.hax.Utils class contains the constant 'NEWLINE' that we can use as the separator when calling the join() method.
+					 * The 'sk.hax.Utils' class contains the NEWLINE constant, which can be used as the separator when calling the join() method.
 					 */
 					KERNEL.writeFile("/sample/level5/users.txt", usersLines.join(sk.hax.Utils.NEWLINE))
 
@@ -338,7 +337,7 @@ class AuthLock extends InteractiveTask {
 					TERMINAL.writeln "&r-Invalid username or password [incorrect password].&00"
 
 					/*
-					 * If there have been 3 or more failed login attempts, we have just locked a user, so we terminate the task.
+					 * If there have been 3 or more failed login attempts, we have just locked the user, so we terminate the task.
 					 * Otherwise, we keep the task in the PASSWORD state, resulting in another password prompt.
 					 */
 					if (newCounter >= 3) {
