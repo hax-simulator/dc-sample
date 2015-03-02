@@ -84,6 +84,8 @@ class AuthBrute extends InteractiveTask {
 			if (wordlistFile instanceof String) {
 				wordlist = wordlistFile.split("\\r?\\n")
 				TERMINAL.writeln "&w-loaded wordlist with ${wordlist.length} words&00"
+			} else {
+				TERMINAL.writeln "&w-warning: wordlist not found on path ${KERNEL.absoluteFilePath('passwords.lst', PWD)}&00"
 			}
 		}
 
