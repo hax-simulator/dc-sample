@@ -1,6 +1,32 @@
 /**
  * Class 11 - AUTH BRUTEFORCER
  *
+ * This is another task that demonstrates an implementation of two real-world password cracking techniques, the brute-force attack and the dictionary attack on a remote authentication service.
+ * What the task does is basically connect over and over again to a remote service, submit a specific username and password combination and check for the authentication result.
+ *
+ * The remote network address and port, as well as the username, are taken from the command line arguments. The list of passwords to try is constructed in one of two possible ways.
+ *
+ * It can either be taken from a text file containing a list of words commonly used as passwords. This is known in real-world hacking as a dictionary attack, and the text file is usually called a wordlist or dictionary.
+ * This approach to crack a password is very fast, since the amount of tries is relatively small. Obviously, it does not work against strong passwords which are not in the dictionary.
+ *
+ * The list of passwords can also be constructed on the fly, programmatically, by trying every possible combination of characters. This is known in real-world hacking as a brute-force attack.
+ * Usually, brute-force cracking should be avoided, trying other techniques first (social engineering, guessing, dictionary attacks), because even passwords of as little as 6 characters in length take a huge amount of time to crack.
+ * This task only tries passwords of up to 3 lower-case letters in length when in brute-force mode, because the approach shown here only serves demonstration purposes and is far from optimal.
+ * The problem is that the complete password list is generated into memory, rather than generating one password at a time. The available memory might not be enough to hold the complete list for greater password lengths.
+ *
+ * This sample task combines a number of concepts shown in previous samples, such as interactive tasks, file system access, command line arguments, client networking.
+ * It introduces the concept of a background task, which executes a possibly long-running operation, and at the same time allowing the user to interact with it.
+ * It also shows how to use the working directory of the launching shell for referencing files using relative paths.
+ *
+ * Note that background tasks only work in Hax version 2.2 and up, so be sure to update to this version if you have not done so yet.
+ * In earlier versions, you will not be able to cancel the task until its execution finishes, and the Hax GUI will not respond to input during the task's execution.
+ *
+ * The machine 'server1' is running the level4 sample authentication server on port 1030, which is the one targeted by this task.
+ * You can try to run the task with the command 'AuthBrute.groovy server1 1030 admin'. This will launch a dictionary attack on the service, and the password should be found in the dictionary.
+ * You can also try to run the task with the command 'AuthBrute.groovy server1 1030 ignorant -brute'. This will launch a brute-force attack on the service, and the password should be eventually found (since the user has a very weak password).
+ *
+ * The default mode of operation is dictionary mode, provided that a dictionary file named 'passwords.lst' is found in the directory from which this task is started (not necessarily the same directory where the task file resides!).
+ * If the dictionary file is not present, or the string '-brute' is added as the last command line parameter, the task operates in brute-force mode.
  */
 
 package sk.hax.software.sample.level7
@@ -26,6 +52,8 @@ class AuthBrute extends InteractiveTask {
 
 	String[] wordlist = null
 
+	int threshold = 1
+
 	void start() {
 
 		super.start()
@@ -45,17 +73,21 @@ class AuthBrute extends InteractiveTask {
 			/*
 			 * If the arguments are incorrect, we print a usage hint to the terminal and finish the task.
 			 */
-			TERMINAL.writeln "&y-Usage: AuthBrute.groovy ADDRESS PORT USERNAME&00"
+			TERMINAL.writeln "&y-Usage: AuthBrute.groovy ADDRESS PORT USERNAME [-brute]&00"
 
 			KERNEL.stopTask(this)
 			return
 	 	}
 
-		def wordlistFile = KERNEL.readFile("passwords.lst", PWD)
-		if (wordlistFile instanceof String) {
-			wordlist = wordlistFile.split("\\r?\\n")
-			TERMINAL.writeln "&w-loaded wordlist with ${wordlist.length} words&00"
-		} else {
+		if (ARGS.length < 4 || ARGS[3] != "-brute") {
+			def wordlistFile = KERNEL.readFile("passwords.lst", PWD)
+			if (wordlistFile instanceof String) {
+				wordlist = wordlistFile.split("\\r?\\n")
+				TERMINAL.writeln "&w-loaded wordlist with ${wordlist.length} words&00"
+			}
+		}
+
+		if (!wordlist) {
 			wordlist =
 				("a".."z").collect {x ->
 					("a".."z").collect([x]) {y ->
@@ -66,6 +98,8 @@ class AuthBrute extends InteractiveTask {
 				}.flatten()
 			TERMINAL.writeln "&w-generated wordlist with ${wordlist.length} words&00"
 		}
+
+		threshold = wordlist.length / 10
 
 		TERMINAL.writeln "&w-press ENTER to start brute-forcing authentication at ${ARGS[0]}:${ARGS[1]}, ESC to cancel...&00"
 	}
@@ -135,7 +169,7 @@ class AuthBrute extends InteractiveTask {
 			} else if (index == wordlist.length) {
 				running = false
 				TERMINAL.writeln "&r-password not found in wordlist&00"
-			} else if (running && index % 10 == 0) {
+			} else if (running && index % threshold == 0) {
 				TERMINAL.writeln "&w-...already tried ${index} of ${wordlist.length} passwords...&00"
 			}
 		}

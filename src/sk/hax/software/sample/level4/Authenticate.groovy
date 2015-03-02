@@ -10,8 +10,9 @@
  * The format of each line is thus 'username:realname:MD5(password)'. Passwords in the file are stored as MD5 hashes instead of plain text.
  * Note that the task uses an absolute path to reference the file, thus the file must not be moved elsewhere.
  *
- * For demonstration purposes, two accounts are contained in this file.
+ * For demonstration purposes, three accounts are contained in this file.
  * The user 'admin' has the password '4dm1n', and the user 'guest' has the password 'guest'.
+ * The user 'ignorant', a user ignoring the common recommendations on password length and quality, has the password 'zap'.
  * For any other username/password combinations, the task fails.
  * You can of course try to add more users to this file. To calculate the MD5 hash for the desired password, search for an online MD5 calculator on the Internet.
  *
