@@ -8,13 +8,17 @@
  * Machines are constructed of various components, like keyboard, display, network interface and storage.
  * Wires are constructed by specifying the network interfaces they connect to each other.
  *
- * The sample data center consists of a single machine.
- * It has a keyboard and display (or terminal), enabling direct login from the Hax user interface.
- * It also has a storage device (hard disk), and a network interface which is currently not used.
+ * The sample data center consists of a workstation, a server, and a switch to interconnect the two.
+ * It occupies the network address space of 192.168.1.0/24, meaning the machines can have addresses in the range between 192.168.1.1 and 192.168.1.254.
+ *
+ * The workstation is the machine you as the user directly interact with, as if you had physical access to it.
+ * It has a keyboard and display (or terminal), enabling direct login from the Hax graphical user interface.
+ * It also has a storage device (hard disk), and a network interface.
  * The machine is running HaxOS as its operating system.
  * The /sample directory on the storage device contains all the sample scripts.
  * The storage device itself is not persistent, so any changes you make to files are discarded when the data center is shut down.
  * For convenience, the HaxOS working directory is changed to /sample after machine startup.
+ * The workstation has the network address 192.168.1.10.
  */
 
 /*
@@ -22,7 +26,7 @@
  * Inside the directive, you can specify all components and settings for the machine using other specific directives.
  * The 'machine' directive is special in that it returns a reference to the newly created machine as its result.
  * This result can then be used to connect the machine's network interface to another machine's network interface with a wire.
- * Here, we assign the reference to the new machine into the 'workstation1' variable, although we do not use the variable further in the configuration file.
+ * Here, we assign the reference to the new machine into the 'workstation1' variable, to be able to connect it later to our switch.
  */
 def workstation1 = machine {
 	/*
@@ -113,5 +117,149 @@ def workstation1 = machine {
 		 * After that, we list the contents of the working directory, so the user immediately sees where he can go from there.
 		 */
 		startup "cd /sample", "ls"
+
+		/*
+		 * Another directive to specify a system configuration file is 'network'.
+		 * This directive defines the contents of the '/etc/network' configuration file, used by operating systems to configure networking.
+		 * For HaxOS, the file only needs to contain the network address of the machine, which in this case is 192.168.1.10.
+		 */
+		network "192.168.1.10"
 	}
 }
+
+/*
+ * Here is the definition of the server machine.
+ * The server is also running HaxOS as its operating system.
+ * However, we don't need to have a terminal for it, since all running services can be started using the HaxOS startup configuration.
+ * When connecting to the server, it can be referenced either by its network address, or by its domain name (equal to its name 'server1').
+ * The reference to the server machine is stored in the 'server1' variable, so that we can later easily connect it to our switch.
+ */
+def server1 = machine {
+	/*
+	 * The server will be called server1.
+	 */
+	name "server1"
+
+	/*
+	 * Don't forget the 'firmware' directive.
+	 */
+	firmware()
+
+	/*
+	 * Like the workstation, the server will also have only a single network interface, since it is running HaxOS.
+	 * We will later connect this network interface to one of the network interfaces of our switch.
+	 */
+	network()
+
+	/*
+	 * The server will have a storage device hosting the operating system and data.
+	 */
+	storage {
+		/*
+		 * The operating system will again be HaxOS.
+		 */
+		boot "${HAX_HOME}/soft/haxos.jar"
+
+		/*
+		 * We add all the sample scripts to the '/sample' directory, just like on the workstation.
+		 * We will want to run some of the sample scripts as services published on the network, that's why we need to have them on the storage.
+		 */
+		data "/sample", "src/sk/hax/software/sample"
+
+		/*
+		 * We publish three of the sample scripts as network services on various ports.
+		 * As you can remember from the Hax tutorial on networking, this is very simple using the remote task daemon (rtaskd) of HaxOS.
+		 * We only need to specify the network port number and the task that should be bound to it.
+		 * We start the 'Hello World' task on port 1010, the 'Introduce' task on port 1020, and the 'Authenticate' task on port 1030.
+		 * We will connect to these network services from the client networking sample tasks.
+		 */
+		startup "rtaskd 1010 /sample/level0/hello.groovy", "rtaskd 1020 /sample/level3/Introduce.groovy", "rtaskd 1030 /sample/level4/Authenticate.groovy"
+
+		/*
+		 * We set the server's network address to 192.168.1.50.
+		 */
+		network "192.168.1.50"
+	}
+
+	/*
+	 * The 'domain' directive adds the server's name to the list of published domain names.
+	 * This allows to transparently use the server's name instead of the server's network address for the purpose of networking.
+	 * E.g. on the user level, instead of 'telnet 192.168.1.50 23', one can use 'telnet server1 23'. On the developer level, Hax provides a simple API which encapsulates domain-to-address resolution.
+	 * Important: the 'domain' directive MUST always be used after specifying the '/etc/network' configuration file. Best practice is to put it at the end of the machine configuration.
+	 */
+	domain()
+}
+
+/*
+ * The definition of the switch to interconnect the machines of the data center.
+ * The switch has four network interfaces. More could be added if required.
+ * The switch reference is stored in the 'switch1' variable so that we can later easily attach wires to its network interfaces.
+ */
+def switch1 = machine {
+	/*
+	 * The switch will be called 'switch1'.
+	 */
+	name "switch1"
+
+	/*
+	 * Don't forget the 'firmware' directive.
+	 */
+	firmware()
+
+	/*
+	 * Four network interfaces are added to the switch.
+	 * The first one is the default interface to be connected to the outside network. Since we have no outside network here, it will remain disconnected.
+	 * The second one will be connected to the workstation.
+	 * The third one will be connected to the server.
+	 * The fourth is reserved for future use and will currently remain disconnected.
+	 */
+	network()
+	network()
+	network()
+	network()
+
+	/*
+	 * The storage device of a switch contains the switch operating system and the network configuration.
+	 */
+	storage {
+		/*
+		 * Upon startup, the machine boots the switch operating system.
+		 */
+		boot "${HAX_HOME}/soft/haxswitch.jar"
+
+		/*
+		 * Note that again, the '/etc/network' file is used by the switch operating system for network configuration.
+		 * For a switch, the file must contain the definition of the local subnet, either in the form of the base address and mask, or in CIDR notation.
+		 * As you might remember, the switch uses this information in conjunction with the destination address of incoming data to determine whether to forward the data to the default network interface (the first one), or one of the internal ones.
+		 * For more information, see also the Hax tutorial on networking.
+		 * As mentioned earlier, the local subnet of the sample data center is 192.168.1.0/24 (using CIDR notation). This is what we set the network configuration to.
+		 */
+		network "192.168.1.0/24"
+	}
+}
+
+/*
+ * Now it's time to wire up the machines of our data center.
+ * Wiring is done using the 'wire' directive. This directive has several forms of syntax for convenience.
+ * At the end of the day, we basically need to specify a pair of network interfaces to be connected by the wire.
+ * A network interface is specified by the machine that contains it, and its (0-based) index among all network interfaces of that machine.
+ * E.g. machines running HaxOS will have only a single network interface, with an index of 0. The switch above has network interfaces 0, 1, 2 and 3.
+ * For convenience, the 'wire' directive supports omitting the network interface index when specifying network interface 0 of a machine.
+ *
+ * The following directive connects network interface 1 (the second one) of the switch (referenced by variable 'switch1') to network interface 0 (the only one) of the workstation (referenced by variable 'workstation1').
+ * Thus, we have our workstation connected to the switch, and they are able to exchange data through the network.
+ * Note that we omit specifying the index 0 for the workstation network interface.
+ */
+wire switch1, 1, workstation1
+
+/*
+ * The following directive connects network interface 2 (the third one) of the switch (referenced by variable 'switch1') to network interface 0 (the only one) of the server (referenced by variable 'server1').
+ * Thus, we have our server connected to the switch, and they are able to exchange data through the network.
+ * Note that we omit specifying the index 0 for the server network interface.
+ *
+ * Furthermore, since the switch forwards all received data based on its destination address, the workstation can now communicate with the server and vice versa if they provide the correct destination address.
+ * So, we have created a very simple computer network with two interconnected nodes which are able to communicate.
+ * Also, the switch allows us to easily add more nodes to the network as required.
+ * We would simply define the new machine (with a network interface and a unique network address in the 192.168.1.0/24 range), add a network interface to our switch, and connect them with a wire.
+ */
+wire switch1, 2, server1
