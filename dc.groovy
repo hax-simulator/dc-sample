@@ -8,7 +8,7 @@
  * Machines are constructed of various components, like keyboard, display, network interface and storage.
  * Wires are constructed by specifying the network interfaces they connect to each other.
  *
- * The sample data center consists of a workstation, a server, and a switch to interconnect the two.
+ * The sample data center consists of a workstation, a server, a secondary workstation, and a switch to interconnect all the nodes.
  * It occupies the network address space of 192.168.1.0/24, meaning the machines can have addresses in the range between 192.168.1.1 and 192.168.1.254.
  *
  * The workstation is the machine you as the user directly interact with, as if you had physical access to it.
@@ -19,6 +19,13 @@
  * The storage device itself is not persistent, so any changes you make to files are discarded when the data center is shut down.
  * For convenience, the HaxOS working directory is changed to /sample after machine startup.
  * The workstation has the network address 192.168.1.10.
+ *
+ * The secondary workstation is basically a copy of the primary workstation, with a changed name and network address (192.168.1.11).
+ * It is used for testing higher level samples about advanced networking, which require multiple client connections.
+ *
+ * The server is a machine that is hidden from the user running the data center. It does not have a terminal to interact with.
+ * It runs a couple of network services on various ports. It is used for testing samples about networking.
+ * Its network address is 192.168.1.50, but it can also be accessed by its domain name (server1).
  */
 
 /*
@@ -128,6 +135,25 @@ def workstation1 = machine {
 }
 
 /*
+ * This machine is the secondary workstation of the data center.
+ * It is used for testing higher level samples about advanced networking, which require multiple clients.
+ * The machine is an exact copy of the 'workstation1' machine, except for the name and the network address.
+ * We assign the reference to this machine into the 'workstation2' variable, to be able to connect it later to our switch.
+ */
+def workstation2 = machine {
+	name "workstation2"
+	firmware()
+	terminal()
+	network()
+	storage {
+		boot "${HAX_HOME}/soft/haxos.jar"
+		data "/sample", "src/sk/hax/software/sample"
+		startup "cd /sample", "ls"
+		network "192.168.1.11"
+	}
+}
+
+/*
  * Here is the definition of the server machine.
  * The server is also running HaxOS as its operating system.
  * However, we don't need to have a terminal for it, since all running services can be started using the HaxOS startup configuration.
@@ -173,7 +199,7 @@ def server1 = machine {
 		 * We start the 'Hello World' task on port 1010, the 'Introduce' task on port 1020, and the 'Authenticate' task on port 1030.
 		 * We will connect to these network services from the client networking sample tasks.
 		 */
-		startup "rtaskd 1010 /sample/level0/hello.groovy", "rtaskd 1020 /sample/level3/Introduce.groovy", "rtaskd 1030 /sample/level4/Authenticate.groovy"
+		startup "rtaskd 1010 /sample/level0/hello.groovy", "rtaskd 1020 /sample/level3/Introduce.groovy", "rtaskd 1030 /sample/level4/Authenticate.groovy", "/sample/level8/ChatServer.groovy 6666"
 
 		/*
 		 * We set the server's network address to 192.168.1.50.
@@ -207,11 +233,12 @@ def switch1 = machine {
 	firmware()
 
 	/*
-	 * Four network interfaces are added to the switch.
+	 * Five network interfaces are added to the switch.
 	 * The first one is the default interface to be connected to the outside network. Since we have no outside network here, it will remain disconnected.
 	 * The second one will be connected to the workstation.
 	 * The third one will be connected to the server.
-	 * The fourth is reserved for future use and will currently remain disconnected.
+	 * The fourth one will be connected to the secondary workstation.
+	 * The fifth is reserved for future use and will currently remain disconnected.
 	 */
 	network()
 	network()
@@ -263,3 +290,11 @@ wire switch1, 1, workstation1
  * We would simply define the new machine (with a network interface and a unique network address in the 192.168.1.0/24 range), add a network interface to our switch, and connect them with a wire.
  */
 wire switch1, 2, server1
+
+/*
+ * The following directive connects the secondary workstation to network interface 3 (the fourth one) of the switch.
+ * This enables network communication between all three sample machines (workstation1, workstation2 and server1).
+ * Our computer network has now grown to three interconnected nodes which are able to communicate.
+ * Note that we again omit specifying the index 0 for the workstation network interface.
+ */
+wire switch1, 3, workstation2

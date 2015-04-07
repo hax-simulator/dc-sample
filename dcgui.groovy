@@ -37,3 +37,12 @@ machine "workstation1"
  * Here, we want to display the console connected to the 'workstation1' access point, which is in turn linked to the terminal of the 'workstation1' machine.
  */
 terminal "workstation1"
+
+/*
+ * We also want to be able to interact with the secondary workstation the same way we can with the primary one.
+ * So, we repeat the above directives with the name of the secondary workstation.
+ * The first statement adds an entry for the secondary workstation in the Machines menu.
+ * The second statement creates a console window for the secondary workstation.
+ */
+machine "workstation2"
+terminal "workstation2"
