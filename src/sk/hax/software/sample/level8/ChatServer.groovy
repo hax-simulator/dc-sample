@@ -240,63 +240,102 @@ class ChatServer implements Task {
 			channel.publish(KERNEL.newDatagram(key[0], key[1], payload))
 
 		/*
-		 *
+		 * If the incoming datagram's sender is contained in the set of connected clients, we check whether the received datagram is a request to disconnect from the chat server.
+		 * If the client wishes to disconnect from the server, he sends a datagram with an empty payload.
+		 * Remember, to check whether an array is null or empty in Groovy, it is sufficient to check its boolean value.
+		 * The boolean value of a null or empty array is false, so this is what we check the datagram's payload for.
 		 */
 		} else if (!datagram.getData()){
 
 			/*
-			 *
+			 * The client has sent us a request to disconnect.
+			 * Therefore, we remove it from the set of connected clients.
 			 */
 			clients.remove(key)
 
 			/*
-			 *
+			 * We want to notify all other clients that somebody has left the chat, so we will send them all a notification message with the leaving client's identification.
+			 * Here, we prepare the payload of the message. The payload will contain the string representation of the leaving client's unique key (embedded in form of a GString).
+			 * Also note that we need to add a newline character at the end of the string, so the message is printed to the clients on a separate line.
+			 * We declared the 'payload' variable as a byte array, so we use the Groovy method getBytes() on the constructed message string to convert it to a byte array.
 			 */
 			payload = "${keyString} : has left\n".getBytes()
 
 			/*
-			 *
+			 * At this point, we also send the notification message to the leaving client.
+			 * This serves merely as a notification that he managed to successfully leave the chat.
+ 			 * The publish() method of the 'channel' property is used to send the message. This method accepts a datagram object, and sends that datagram out on the network.
+			 * We use the newDatagram() method of the kernel to construct the datagram to be sent. Input parameters are the destination network address and port, as well as the payload in form of a byte array.
+			 * The destination can be taken either from the received datagram itself, or from the 'key' variable which we initialized earlier.
+			 * We decided to use the vector contained in the 'key' variable. The first element (with index 0) of the vector is the network address, the second (with index 1) is the network port.
 			 */
 			channel.publish(KERNEL.newDatagram(key[0], key[1], payload))
 
 		/*
-		 *
+		 * If the incoming datagram's sender is contained in the set of connected clients and the datagram is not empty, we just received a chat message from the client.
+		 * In this case, we need to prepend the message with the identification of the client that sent it, and send the resulting message out to all other connected clients.
+		 * Prepending the message with some information is a bit tricky, since we need to add the information to the start of a byte array.
+		 * We need to construct a new byte array, to which we then add the new information as well as the original datagram's payload.
+		 * Luckily, Groovy (and Java) has some library classes that help us handle this operation.
 		 */
 		} else {
 
 			/*
-			 *
+			 * First, we create a byte array output stream. This is a Java object that can be used to construct a byte array by writing individual bytes to it.
+			 * We store the reference to the stream in the 'baos' local variable. The output stream will be empty at this point.
 			 */
 			ByteArrayOutputStream baos = new ByteArrayOutputStream()
 
 			/*
-			 *
+			 * We need to write the identification of the sender to the byte array output stream.
+			 * The output stream class provides a number of write() methods with various input parameters to append data to the resulting byte array.
+			 * Here, we use the form which accepts a single byte array as an input parameter. In this case, the contents of the byte array on input are appended to the end of the resulting byte array.
+			 * We take the identification of the client sending the message (stored in the 'keyString' variable), add a colon to it, and convert the resulting string to a byte array using the getBytes() method.
 			 */
 			baos.write((keyString + " : ").getBytes())
 
 			/*
-			 *
+			 * We append the received message itself to the byte array output stream.
+			 * Again, we use the form of the write() method which accepts a single byte array.
+			 * In this case, we simply provide the payload of the incoming datagram, which contains the message sent by the client.
+			 * Our byte array output stream now contains the sending client identification, followed by a colon, followed by the message.
 			 */
 			baos.write(datagram.getData())
 
 			/*
-			 *
+			 * Finally, we need to retrieve the resulting byte array from our byte array output stream.
+			 * The output stream class provides the method toByteArray() for this.
+			 * We store the resulting byte array in the 'payload' variable defined above.
 			 */
 			payload = baos.toByteArray()
 		}
 
 		/*
-		 *
+		 * Note that at this point, the 'payload' variable contains a message that needs to be sent out to all currently connected clients.
+		 * It either contains a notification message about a client joining or leaving the chat, or a chat message sent from one of the chat participants.
+		 * The following code will iterate through all the connected clients and send the message contained in the 'payload' variable out to each one of them.
+		 * For this purpose, we could either use a classic for-loop. Instead, we decided to demonstrate a more Groovy-like approach.
+		 * In Groovy, any collection type can be iterated using the each() method. As an input parameter, this method method accepts a closure (an anonymous function, see the Groovy documentation).
+		 * The method iterates through the elements of the collection and executes the provided closure for each one of those elements.
+		 * The provided closure has access to an implicit variable called 'it', which always contains the current element that it is being executed against.
+		 * In this case, the 'it' variable will contain the key (vector consisting of the network address and port) of the iterated client.
 		 */
 		clients.each {
 
 			/*
-			 *
+			 * We want to send out the message to all of the connected clients - except for the original sender of the message.
+			 * Remember, the 'clients' variable is a set containing the keys of the connected clients (pairs of network addresses and ports).
+			 * Before sending the message to the currently iterated client, we check whether its key (contained in the implicit 'it' variable) is not the same as the sender's key (contained in the 'key' variable defined above).
 			 */
 			if (it != key) {
 
 				/*
-				 *
+				 * If the currently iterated client is not the message sender himself, we proceed to send out the message to him.
+				 * The publish() method of the 'channel' property is used to send the message. This method accepts a datagram object, and sends that datagram out on the network.
+				 * We use the newDatagram() method of the kernel to construct the datagram to be sent. Input parameters are the destination network address and port, as well as the payload in form of a byte array.
+			     * The destination is taken from the key of the currently iterated client, contained in the implicit 'it' variable.
+			     * Remember, client keys are vectors, in which the first element (with index 0) is the network address, the second (with index 1) is the network port.
+			     * The message to send is contained in the 'payload' byte array variable.
 				 */
 				channel.publish(KERNEL.newDatagram(it[0], it[1], payload))
 			}
