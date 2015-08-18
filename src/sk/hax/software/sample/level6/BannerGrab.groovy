@@ -65,14 +65,14 @@ class BannerGrab implements Task {
 	Kernel KERNEL
 
 	/*
-	 * Terminal to write the received data to.
+	 * Terminal to handle console input and output for the task.
 	 * Note that we do not need to subscribe a listener to the terminal, as we will not be dealing with user input in this task.
 	 */
 	Terminal TERMINAL
 
 	/*
 	 * Command line arguments.
-	 * This is the array that will contain the arguments provided to the script on the command line.
+	 * This is the array that will contain the arguments provided to the task on the command line upon startup.
 	 * The item at index 0 is the first argument, the item at index 1 the second argument, etc.
 	 */
 	String[] ARGS
