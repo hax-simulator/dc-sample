@@ -114,7 +114,7 @@ class AuthBrute extends InteractiveTask {
 			/*
 			 * Note that unlike the previous sample task ('BannerGrab'), this task is an interactive one.
 			 * This means that it is not sufficient to just return from the start() method, as the HaxOS kernel would keep the task in its task list running.
-			 * Thus, we need to also tell the kernel to stop the task. We do this by the stopTask() kernel API method, just like in some of the previous samples.
+			 * Thus, we need to also tell the kernel to stop the task. We do this using the stopTask() kernel API method, just like in some of the previous samples.
 			 */
 			KERNEL.stopTask(this)
 			return

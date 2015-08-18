@@ -2,13 +2,18 @@
  * Class 12 - CHAT SERVER
  *
  * This task class represents a very simple chat server.
- * It keeps a list of connected clients. Every time it receives some data from a client, it just forwards that data to all other registered clients.
+ *
+ * The task runs on a machine in the background, listening for incoming data from the network on a specific network port.
+ * It keeps track of all clients that have contacted it. Every time it receives some data from a client, it forwards that data to all other known clients.
  * In effect, this provides a very simple chat system, where multiple users may talk (well, write) to each other. A real life analogy could be a single IRC chatroom.
  *
- * For implementing such a service, the common way of using a simple interactive task and publishing it using remote task daemon (rtaskd) is not sufficient.
- * Rtaskd works so that for each client connection, it creates a new instance of the task. Each of these instances is separate, and the only way they can interact with each other is via the machine's storage (file system).
- * Such an implementation would be rather cumbersome. In this case, it is easier to create a task class that will run on the server machine as a single instance.
- * The task must handle all incoming network communication right at the network level rather than on the terminal level. It must also maintain the list of connected clients as part of its state.
+ * For implementing such a service, the common way of using a simple interactive task and publishing it using remote task daemon (rtaskd) is rather challenging.
+ * Rtaskd creates a new instance of the underlying task for every connected client. Each such instance is completely separated from the others, and making them interact with each other is very difficult.
+ * Obviously, implementing a broadcast-based communication system this way would be rather cumbersome.
+ *
+ * Thus, it is easier and more straightforward to create a task class that will run on the server machine as a single instance.
+ * The task must handle all incoming network communication right at the network level rather than on the terminal level.
+ * It must also maintain the list of connected clients as part of its state.
  *
  * The task first initializes the list of connected clients to be empty. Then, it creates a channel which listens on a specific network port for incoming data.
  * There are basically three different cases that can occur when the server receives some data from the network.
@@ -27,6 +32,7 @@
  * Therefore, the built-in 'telnet' task of HaxOS can be used as a client application for the chat system.
  *
  * To join the chat inside the sample data center, simply use the command 'telnet server1 6666' on both workstation machines.
+ * Afterwards, anything you type on one workstation machine will be displayed on the other workstation machine as well.
  * This simulates two concurrent users connected to the chat room and being able to communicate.
  */
 
@@ -58,16 +64,16 @@ class ChatServer implements Task {
 	Kernel KERNEL
 
 	/*
-	 * Terminal to write the received data to.
+	 * Terminal to handle console input and output for the task.
 	 * Note that we do not need to subscribe a listener to the terminal, as we will not be dealing with user input in this task.
-	 * Also note that this terminal will be actually be the console with the HaxOS shell command line from which the server was started.
+	 * Also note that this terminal will actually be the console with the HaxOS shell command line from which the server was started.
 	 * The task uses this terminal to display some messages to the server administrator in the console.
 	 */
 	Terminal TERMINAL
 
 	/*
 	 * Command line arguments.
-	 * This is the array that will contain the arguments provided to the script on the command line.
+	 * This is the array that will contain the arguments provided to the task on the command line upon startup.
 	 * The item at index 0 is the first argument, the item at index 1 the second argument, etc.
 	 * This task will require a single command line argument - the network port which the server will be listening on.
 	 */
@@ -90,7 +96,7 @@ class ChatServer implements Task {
 
 	/*
 	 * We will use the start() method of the 'Task' interface to do sanity checks on command line arguments and initialize the task.
-	 * This includes opening the network port to listen for incoming data, as well as assigning a handler which will be executed when some data arrives from the network.
+	 * This includes opening the network port to listen for incoming data, as well as assigning the handler which will be executed when some data arrives from the network.
 	 */
 	void start() {
 
@@ -114,7 +120,7 @@ class ChatServer implements Task {
 			/*
 			 * Note that this task has the RESIDENT property set to true.
 			 * This means that it is not sufficient to just return from the start() method, as the HaxOS kernel would keep the task in its task list running.
-			 * Thus, we need to also tell the kernel to stop the task. We do this by the stopTask() kernel API method, just like in some of the previous samples.
+			 * Thus, we need to also tell the kernel to stop the task. We do this using the stopTask() kernel API method, just like in some of the previous samples.
 			 */
 			KERNEL.stopTask(this)
 			return
@@ -157,7 +163,7 @@ class ChatServer implements Task {
 
 		/*
 		 * Note that since we did not subscribe a handler to the TERMINAL object, the console returns to the HaxOS shell command line after executing this start() method.
-		 * The server runs completely in the background, and the user can normally carry on with his work in the command line - execute commands, start other tasks etc.
+		 * The server then runs completely in the background, and the user can carry on with his work in the command line as normal - execute commands, start other tasks etc.
 		 */
 	}
 
@@ -169,13 +175,13 @@ class ChatServer implements Task {
 
 		/*
 		 * If a network channel has been previously opened, we need to close it to free up operating system resources.
-		 * Just like in the previous example, we use the Groovy operator '?.' to avoid unnecessary if-null checks.
+		 * Just like in previous examples, we use the Groovy operator '?.' to avoid unnecessary if-null checks.
 		 */
 		channel?.close()
 	}
 
 	/*
-	 * This is the handler method that is subscribed to the listening channel to be invoked upon receiving some data from the network.
+	 * This is the handler method that is subscribed to the listening channel to be invoked upon receiving data from the network.
 	 * It first checks whether the incoming datagram's sender is an existing client. If not, the sender is added to the set of clients.
 	 * If the sender is an existing client, the method checks whether the received datagram is a null datagram (has an empty payload).
 	 * If so, this is treated as a request to disconnect from the chat server, and the sender is removed from the set of clients.
@@ -195,14 +201,14 @@ class ChatServer implements Task {
 		 * The local variable 'keyString' will contain the string representation of the unique identification of the incoming datagram's sender.
 		 * Note that we use the getAddressString() method of the datagram to retrieve the sender's network address, so the address is in a human-readable format.
 		 * In real life chat systems, usually the user name is prepended to the messages sent by that user.
-		 * Here, the clients have no user names assigned. Therefore, we use this string to identify them.
+		 * Here, the clients have no user names assigned, and we use this string to identify them instead.
 		 */
 		String keyString = "[${datagram.getAddressString()}:${datagram.getPort()}]"
 
 		/*
 		 * We declare the local variable 'payload' as a byte array that will contain the payload of the datagram which will be sent to all connected clients.
 		 * Since we want to tag the incoming messages with the identification of the sender, we first need to add this tag to the received data before forwarding it.
-		 * We will use this variable to store the resulting data.
+		 * We will use this variable to store the resulting data. The data will always have the following form: "[sender key] : [message]".
 		 */
 		byte[] payload
 
@@ -216,7 +222,7 @@ class ChatServer implements Task {
 
 			/*
 			 * We add the new client's unique key to the set of connected clients.
-			 * Now the client is officially connected to the chat server.
+			 * Now the client is effectively connected to the chat server.
 			 */
 			clients.add(key)
 
@@ -232,7 +238,7 @@ class ChatServer implements Task {
 			 * At this point, we also send the notification message to the new client.
 			 * This serves merely as a notification that he managed to successfully join the chat.
 			 * This would also be the right place to e.g. send him the list of connected clients, chat topic etc. We omit this for the sake of simplicity of the sample.
-			 * The publish() method of the 'channel' property is used to send the message. This method accepts a datagram object, and sends that datagram out on the network.
+			 * The publish() method of the channel instance contained in the 'channel' property is used to send the message. This method accepts a datagram object, and sends that datagram out to the network.
 			 * We use the newDatagram() method of the kernel to construct the datagram to be sent. Input parameters are the destination network address and port, as well as the payload in form of a byte array.
 			 * The destination can be taken either from the received datagram itself, or from the 'key' variable which we initialized earlier.
 			 * We decided to use the vector contained in the 'key' variable. The first element (with index 0) of the vector is the network address, the second (with index 1) is the network port.
@@ -248,8 +254,8 @@ class ChatServer implements Task {
 		} else if (!datagram.getData()){
 
 			/*
-			 * The client has sent us a request to disconnect.
-			 * Therefore, we remove it from the set of connected clients.
+			 * The client has sent us a request to disconnect from the chat server.
+			 * Therefore, we remove its key from the set of connected clients.
 			 */
 			clients.remove(key)
 
@@ -264,7 +270,7 @@ class ChatServer implements Task {
 			/*
 			 * At this point, we also send the notification message to the leaving client.
 			 * This serves merely as a notification that he managed to successfully leave the chat.
- 			 * The publish() method of the 'channel' property is used to send the message. This method accepts a datagram object, and sends that datagram out on the network.
+ 			 * The publish() method of the channel instance contained in the 'channel' property is used to send the message. This method accepts a datagram object, and sends that datagram out to the network.
 			 * We use the newDatagram() method of the kernel to construct the datagram to be sent. Input parameters are the destination network address and port, as well as the payload in form of a byte array.
 			 * The destination can be taken either from the received datagram itself, or from the 'key' variable which we initialized earlier.
 			 * We decided to use the vector contained in the 'key' variable. The first element (with index 0) of the vector is the network address, the second (with index 1) is the network port.
@@ -275,7 +281,7 @@ class ChatServer implements Task {
 		 * If the incoming datagram's sender is contained in the set of connected clients and the datagram is not empty, we just received a chat message from the client.
 		 * In this case, we need to prepend the message with the identification of the client that sent it, and send the resulting message out to all other connected clients.
 		 * Prepending the message with some information is a bit tricky, since we need to add the information to the start of a byte array.
-		 * We need to construct a new byte array, to which we then add the new information as well as the original datagram's payload.
+		 * We need to construct a new empty byte array, to which we then add the new information as well as the original datagram's payload.
 		 * Luckily, Groovy (and Java) has some library classes that help us handle this operation.
 		 */
 		} else {
@@ -297,7 +303,7 @@ class ChatServer implements Task {
 			/*
 			 * We append the received message itself to the byte array output stream.
 			 * Again, we use the form of the write() method which accepts a single byte array.
-			 * In this case, we simply provide the payload of the incoming datagram, which contains the message sent by the client.
+			 * In this case, we simply provide the payload of the incoming datagram, which contains the message sent by the client in form of a byte array.
 			 * Our byte array output stream now contains the sending client identification, followed by a colon, followed by the message.
 			 */
 			baos.write(datagram.getData())
@@ -305,19 +311,19 @@ class ChatServer implements Task {
 			/*
 			 * Finally, we need to retrieve the resulting byte array from our byte array output stream.
 			 * The output stream class provides the method toByteArray() for this.
-			 * We store the resulting byte array in the 'payload' variable defined above.
+			 * We store the resulting byte array in the previously defined 'payload' variable.
 			 */
 			payload = baos.toByteArray()
 		}
 
 		/*
-		 * Note that at this point, the 'payload' variable contains a message that needs to be sent out to all currently connected clients.
+		 * Note that at this point, in any case, the 'payload' variable contains the message that needs to be sent out to all currently connected clients.
 		 * It either contains a notification message about a client joining or leaving the chat, or a chat message sent from one of the chat participants.
 		 * The following code will iterate through all the connected clients and send the message contained in the 'payload' variable out to each one of them.
-		 * For this purpose, we could either use a classic for-loop. Instead, we decided to demonstrate a more Groovy-like approach.
-		 * In Groovy, any collection type can be iterated using the each() method. As an input parameter, this method method accepts a closure (an anonymous function, see the Groovy documentation).
+		 * For this purpose, we could use a classic for-loop. Instead, we decided to demonstrate a more Groovy-like approach.
+		 * In Groovy, any collection type can be iterated using the each() method. As an input parameter, this method accepts a closure (an anonymous function, see the Groovy documentation).
 		 * The method iterates through the elements of the collection and executes the provided closure for each one of those elements.
-		 * The provided closure has access to an implicit variable called 'it', which always contains the current element that it is being executed against.
+		 * The provided closure has access to an implicit variable called 'it', which always contains the current collection element that is being processed.
 		 * In this case, the 'it' variable will contain the key (vector consisting of the network address and port) of the iterated client.
 		 */
 		clients.each {
@@ -325,13 +331,13 @@ class ChatServer implements Task {
 			/*
 			 * We want to send out the message to all of the connected clients - except for the original sender of the message.
 			 * Remember, the 'clients' variable is a set containing the keys of the connected clients (pairs of network addresses and ports).
-			 * Before sending the message to the currently iterated client, we check whether its key (contained in the implicit 'it' variable) is not the same as the sender's key (contained in the 'key' variable defined above).
+			 * Before sending the message to the currently iterated client, we check whether its key (contained in the implicit 'it' variable) is not the same as the sender's key (contained in the previously defined 'key' variable).
 			 */
 			if (it != key) {
 
 				/*
 				 * If the currently iterated client is not the message sender himself, we proceed to send out the message to him.
-				 * The publish() method of the 'channel' property is used to send the message. This method accepts a datagram object, and sends that datagram out on the network.
+				 * The publish() method of the channel instance contained in the 'channel' property is used to send the message. This method accepts a datagram object, and sends that datagram out to the network.
 				 * We use the newDatagram() method of the kernel to construct the datagram to be sent. Input parameters are the destination network address and port, as well as the payload in form of a byte array.
 			     * The destination is taken from the key of the currently iterated client, contained in the implicit 'it' variable.
 			     * Remember, client keys are vectors, in which the first element (with index 0) is the network address, the second (with index 1) is the network port.
@@ -340,6 +346,11 @@ class ChatServer implements Task {
 				channel.publish(KERNEL.newDatagram(it[0], it[1], payload))
 			}
 		}
+
+		/*
+		 * At this point, we have successfully processed the datagram we received from the network, so the handler is finished.
+		 * Note that the channel keeps on listening for further data from the network, and executes the handler repeatedly for all received datagrams.
+		 */
 	}
 
 	/*
